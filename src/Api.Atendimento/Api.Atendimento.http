@@ -1,0 +1,29 @@
+@Api.Atendimento_HostAddress = http://localhost:5080
+
+GET {{Api.Atendimento_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{Api.Atendimento_HostAddress}}/conhecimento/tools
+Accept: application/json
+
+###
+
+POST {{Api.Atendimento_HostAddress}}/conhecimento/buscar
+Content-Type: application/json
+
+{
+  "consulta": "teste etapa 3"
+}
+
+###
+
+POST {{Api.Atendimento_HostAddress}}/perguntas
+Content-Type: application/json
+
+{
+  "pergunta": "Onde fica a COTI Informática?"
+}
+
+###

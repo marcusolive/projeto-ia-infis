@@ -1,0 +1,6 @@
+@Api.Conhecimento_HostAddress = http://localhost:5081
+
+GET {{Api.Conhecimento_HostAddress}}/health
+Accept: application/json
+
+###
