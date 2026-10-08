@@ -1,30 +1,40 @@
 using System.Text.Json.Serialization;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace Api.Atendimento.Models;
 
 public sealed class AtendimentoResposta
 {
+    [BsonElement("resposta")]
     [JsonPropertyName("resposta")]
-    public required string Resposta { get; init; }
+    public string Resposta { get; set; } = string.Empty;
 
+    [BsonElement("categoria")]
     [JsonPropertyName("categoria")]
-    public required string Categoria { get; init; }
+    public string Categoria { get; set; } = string.Empty;
 
+    [BsonElement("fontes")]
     [JsonPropertyName("fontes")]
-    public required string[] Fontes { get; init; }
+    public string[] Fontes { get; set; } = [];
 
+    [BsonElement("modelo")]
     [JsonPropertyName("modelo")]
-    public required string Modelo { get; init; }
+    public string Modelo { get; set; } = string.Empty;
 
+    [BsonElement("fallback")]
     [JsonPropertyName("fallback")]
-    public required bool Fallback { get; init; }
+    public bool Fallback { get; set; }
 
+    [BsonElement("tokensEntrada")]
     [JsonPropertyName("tokensEntrada")]
-    public required int TokensEntrada { get; init; }
+    public int TokensEntrada { get; set; }
 
+    [BsonElement("tokensSaida")]
     [JsonPropertyName("tokensSaida")]
-    public required int TokensSaida { get; init; }
+    public int TokensSaida { get; set; }
 
+    [BsonElement("custoEstimado")]
     [JsonPropertyName("custoEstimado")]
-    public required decimal CustoEstimado { get; init; }
+    [BsonRepresentation(MongoDB.Bson.BsonType.Decimal128)]
+    public decimal CustoEstimado { get; set; }
 }

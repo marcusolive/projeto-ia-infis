@@ -49,9 +49,10 @@ public sealed class OpenAiChatService : IOpenAiChatService
         var messages = new List<ChatMessage>
         {
             new SystemChatMessage(
-                "Você responde apenas com base no contexto. " +
+                "Você é um assistente tributário e contábil. " +
+                "Responda apenas com base no contexto. " +
                 "Preencha 'fontes' com os nomes dos documentos citados no contexto. " +
-                "Se não houver informação suficiente, diga isso em 'resposta' e use categoria 'sem_dados'."),
+                "Use categoria 'tributaria', 'contabil', 'fora_escopo' ou 'sem_dados'."),
             new UserChatMessage(prompt)
         };
 

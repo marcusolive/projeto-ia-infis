@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Atendimento.Controllers;
 
+/// <summary>
+/// Mantido por compatibilidade. Prefira POST /atendimentos.
+/// </summary>
 [ApiController]
 [Route("perguntas")]
 public class PerguntasController : ControllerBase
@@ -21,17 +24,26 @@ public class PerguntasController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult<AtendimentoResposta>> PostAsync(
-        [FromBody] PerguntaRequest request,
+        [FromBody] AtendimentoRequest request,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.Usuario))
+        {
+            return BadRequest(new { erro = "Nome do usuário é obrigatório." });
+        }
+
         if (string.IsNullOrWhiteSpace(request.Pergunta))
         {
             return BadRequest(new { erro = "Pergunta é obrigatória." });
         }
 
-        _logger.LogInformation("Recebida pergunta via REST.");
+        _logger.LogInformation("Recebida pergunta via /perguntas (compatibilidade).");
 
-        var resposta = await _orchestrator.ResponderAsync(request.Pergunta, cancellationToken);
+        var resposta = await _orchestrator.ResponderAsync(
+            request.Usuario.Trim(),
+            request.Pergunta.Trim(),
+            cancellationToken);
+
         return Ok(resposta);
     }
 }

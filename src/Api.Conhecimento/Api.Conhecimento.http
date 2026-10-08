@@ -4,3 +4,28 @@ GET {{Api.Conhecimento_HostAddress}}/health
 Accept: application/json
 
 ###
+
+# multipart/form-data — ajuste o caminho do PDF local
+POST {{Api.Conhecimento_HostAddress}}/api/v1/ingest
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="usuario"
+
+infis
+------Boundary
+Content-Disposition: form-data; name="codigoDocumento"
+
+DOC-001
+------Boundary
+Content-Disposition: form-data; name="validade"
+
+2027-12-31T23:59:59Z
+------Boundary
+Content-Disposition: form-data; name="arquivo"; filename="documento.pdf"
+Content-Type: application/pdf
+
+< ./documento.pdf
+------Boundary--
+
+###

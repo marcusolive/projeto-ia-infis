@@ -7,22 +7,19 @@ namespace Api.Conhecimento.Services;
 
 public sealed class BuscaConhecimentoService : IBuscaConhecimentoService
 {
-    private readonly IVectorStore _vectorStore;
+    private readonly IConhecimentoChunkRepository _chunkRepository;
     private readonly IEmbeddingService _embeddingService;
-    private readonly ISimilarityCalculator _similarityCalculator;
     private readonly RagOptions _options;
     private readonly ILogger<BuscaConhecimentoService> _logger;
 
     public BuscaConhecimentoService(
-        IVectorStore vectorStore,
+        IConhecimentoChunkRepository chunkRepository,
         IEmbeddingService embeddingService,
-        ISimilarityCalculator similarityCalculator,
         IOptions<RagOptions> options,
         ILogger<BuscaConhecimentoService> logger)
     {
-        _vectorStore = vectorStore;
+        _chunkRepository = chunkRepository;
         _embeddingService = embeddingService;
-        _similarityCalculator = similarityCalculator;
         _options = options.Value;
         _logger = logger;
     }
@@ -33,34 +30,26 @@ public sealed class BuscaConhecimentoService : IBuscaConhecimentoService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(consulta);
 
-        var chunks = _vectorStore.Listar();
-        if (chunks.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "A base vetorial em memória está vazia. Verifique a ingestão dos documentos.");
-        }
-
         var embeddingConsulta = await _embeddingService.GerarEmbeddingAsync(consulta, cancellationToken);
         var topK = Math.Max(1, _options.TopK);
 
-        var ranqueados = chunks
-            .Select(chunk => new ChunkSimilaridade
-            {
-                Fonte = chunk.Fonte,
-                Conteudo = chunk.Conteudo,
-                Indice = chunk.Indice,
-                Similaridade = _similarityCalculator.CalcularSimilaridadeCosseno(
-                    embeddingConsulta,
-                    chunk.Embedding)
-            })
-            .OrderByDescending(item => item.Similaridade)
-            .Take(topK)
-            .ToList();
+        var ranqueados = await _chunkRepository.BuscarPorSimilaridadeAsync(
+            _options.AgenteIdPadrao,
+            embeddingConsulta,
+            topK,
+            cancellationToken);
 
-        _logger.LogInformation(
-            "Busca vetorial concluída. Consulta com {Tamanho} chars retornou {Quantidade} chunks.",
-            consulta.Length,
-            ranqueados.Count);
+        if (ranqueados.Count == 0)
+        {
+            _logger.LogWarning("Nenhum chunk válido encontrado na base RAG para a consulta.");
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Busca vetorial RAG concluída. Consulta com {Tamanho} chars retornou {Quantidade} chunks.",
+                consulta.Length,
+                ranqueados.Count);
+        }
 
         return ranqueados;
     }

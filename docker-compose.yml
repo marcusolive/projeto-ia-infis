@@ -1,0 +1,157 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag-infis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bd-rag-infis
+      POSTGRES_USER: infis
+      POSTGRES_PASSWORD: infis
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - rag-infis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infis -d bd-rag-infis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rag-infis-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: infis@email.com
+      PGADMIN_DEFAULT_PASSWORD: infis@2026
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5051:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - rag-infis-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/misc/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  mongodb:
+    image: mongo:7
+    container_name: historico-infis-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: infis
+      MONGO_INITDB_ROOT_PASSWORD: infis
+      MONGO_INITDB_DATABASE: bd-historico-atendimentos
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - rag-infis-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "-u", "infis", "-p", "infis", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: historico-infis-mongo-express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: infis
+      ME_CONFIG_MONGODB_ADMINPASSWORD: infis
+      ME_CONFIG_MONGODB_URL: mongodb://infis:infis@mongodb:27017/?authSource=admin
+      ME_CONFIG_BASICAUTH_USERNAME: infis
+      ME_CONFIG_BASICAUTH_PASSWORD: infis
+    ports:
+      - "5052:8081"
+    networks:
+      - rag-infis-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: custos-infis-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Coti@2026"
+      MSSQL_PID: Developer
+    ports:
+      - "1434:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./docker/sqlserver/init:/docker-init:ro
+    networks:
+      - rag-infis-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Coti@2026' -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: custos-infis-sqlserver-init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    volumes:
+      - ./docker/sqlserver/init:/docker-init:ro
+    networks:
+      - rag-infis-network
+    entrypoint: ["/bin/bash", "/docker-init/run-init.sh"]
+    restart: "no"
+
+  adminer:
+    image: adminer:latest
+    container_name: custos-infis-adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DESIGN: pepa-linha
+      ADMINER_DEFAULT_SERVER: sqlserver
+    ports:
+      - "5053:8080"
+    networks:
+      - rag-infis-network
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  mongodb_data:
+  sqlserver_data:
+
+networks:
+  rag-infis-network:
+    driver: bridge

@@ -19,11 +19,12 @@ Content-Type: application/json
 
 ###
 
-POST {{Api.Atendimento_HostAddress}}/perguntas
+POST {{Api.Atendimento_HostAddress}}/atendimentos
 Content-Type: application/json
 
 {
-  "pergunta": "Onde fica a COTI Informática?"
+  "usuario": "infis",
+  "pergunta": "Qual o tratamento contábil para provisão de IRPJ?"
 }
 
 ###

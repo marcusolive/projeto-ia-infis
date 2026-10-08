@@ -1,6 +1,7 @@
 using Api.Atendimento.Configuration;
 using Api.Atendimento.Services;
 using Microsoft.OpenApi;
+using MongoDB.Driver;
 using OpenAI;
 
 namespace Api.Atendimento;
@@ -19,7 +20,7 @@ public class Program
             {
                 Title = "API Atendimento",
                 Version = "v1",
-                Description = "API orquestradora de atendimento corporativo com cliente MCP e OpenAI."
+                Description = "Assistente tributário/contábil com RAG (MCP), histórico MongoDB e custos no SQL Server."
             });
         });
         builder.Services.AddProblemDetails();
@@ -47,16 +48,51 @@ public class Program
                 "OpenAI:ChatModel é obrigatório.")
             .ValidateOnStart();
 
+        builder.Services
+            .AddOptions<MongoHistoricoOptions>()
+            .Bind(builder.Configuration.GetSection(MongoHistoricoOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString),
+                "MongoHistorico:ConnectionString é obrigatória.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.DatabaseName),
+                "MongoHistorico:DatabaseName é obrigatório.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.CollectionName),
+                "MongoHistorico:CollectionName é obrigatório.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.AgenteId),
+                "MongoHistorico:AgenteId é obrigatório.")
+            .Validate(options => options.QuantidadeHistorico > 0,
+                "MongoHistorico:QuantidadeHistorico deve ser maior que zero.")
+            .ValidateOnStart();
+
+        builder.Services
+            .AddOptions<CustosTokensOptions>()
+            .Bind(builder.Configuration.GetSection(CustosTokensOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString),
+                "CustosTokens:ConnectionString é obrigatória.")
+            .Validate(options => options.PrecoEntradaPorMilhao >= 0,
+                "CustosTokens:PrecoEntradaPorMilhao inválido.")
+            .Validate(options => options.PrecoSaidaPorMilhao >= 0,
+                "CustosTokens:PrecoSaidaPorMilhao inválido.")
+            .ValidateOnStart();
+
         builder.Services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAIOptions>>().Value;
             return new OpenAIClient(options.ApiKey);
         });
 
+        builder.Services.AddSingleton<IMongoClient>(sp =>
+        {
+            var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MongoHistoricoOptions>>().Value;
+            return new MongoClient(options.ConnectionString);
+        });
+
         builder.Services.AddHttpClient("McpConhecimento");
         builder.Services.AddScoped<IConhecimentoMcpClient, ConhecimentoMcpClient>();
         builder.Services.AddSingleton<IPromptBuilder, PromptBuilder>();
+        builder.Services.AddSingleton<ICustoTokenCalculator, CustoTokenCalculator>();
         builder.Services.AddScoped<IOpenAiChatService, OpenAiChatService>();
+        builder.Services.AddScoped<IHistoricoConversaRepository, MongoHistoricoConversaRepository>();
+        builder.Services.AddScoped<IConsumoTokensRepository, SqlConsumoTokensRepository>();
         builder.Services.AddScoped<IAtendimentoOrchestrator, AtendimentoOrchestrator>();
 
         var app = builder.Build();
