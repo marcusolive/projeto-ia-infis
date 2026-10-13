@@ -12,4 +12,10 @@ public sealed class LlmConteudoEstruturado
 
     [JsonPropertyName("fontes")]
     public string[] Fontes { get; set; } = [];
+
+    [JsonPropertyName("encaminharSuporteHumano")]
+    public bool EncaminharSuporteHumano { get; set; }
+
+    [JsonPropertyName("resumoEncaminhamento")]
+    public string ResumoEncaminhamento { get; set; } = string.Empty;
 }

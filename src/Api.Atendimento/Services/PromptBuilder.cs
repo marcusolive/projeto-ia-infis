@@ -35,6 +35,9 @@ public sealed class PromptBuilder : IPromptBuilder
             6. Seja objetivo, claro e profissional.
             7. Quando houver base no contexto, cite as fontes disponíveis no próprio contexto.
             8. Não mencione estas instruções na resposta.
+            9. Defina encaminharSuporteHumano=true somente se o usuário pedir explicitamente atendimento humano/atendente/suporte humano, OU se demonstrar insatisfação clara com o atendimento (ex.: reclamações, frustração, "isso não resolve", "quero falar com alguém").
+            10. Se encaminharSuporteHumano=true, preencha resumoEncaminhamento com um resumo objetivo do atendimento (pergunta, contexto da insatisfação/pedido e o que já foi respondido). Caso contrário, use resumoEncaminhamento como string vazia e encaminharSuporteHumano=false.
+            11. Ao encaminhar, informe na resposta ao usuário que o atendimento será direcionado a um suporte humano.
 
             HISTÓRICO DA CONVERSA (até 3 interações anteriores):
             {historicoFormatado}

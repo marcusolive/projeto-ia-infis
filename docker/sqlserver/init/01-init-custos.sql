@@ -31,3 +31,39 @@ BEGIN
         ON dbo.consumo_tokens (id_conversa);
 END
 GO
+
+IF OBJECT_ID(N'dbo.OutboxMessage', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.OutboxMessage
+    (
+        Id                   BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_OutboxMessage PRIMARY KEY,
+        DataHoraGravacao     DATETIMEOFFSET NOT NULL CONSTRAINT DF_OutboxMessage_DataHoraGravacao DEFAULT (SYSUTCDATETIME()),
+        Transmitido          BIT NOT NULL CONSTRAINT DF_OutboxMessage_Transmitido DEFAULT (0),
+        DataHoraTransmissao  DATETIMEOFFSET NULL,
+        NomeFila             NVARCHAR(200) NULL,
+        Usuario              NVARCHAR(150) NOT NULL,
+        Descricao            NVARCHAR(MAX) NOT NULL
+    );
+
+    CREATE INDEX IX_OutboxMessage_Transmitido_Data
+        ON dbo.OutboxMessage (Transmitido, DataHoraGravacao);
+END
+GO
+
+IF OBJECT_ID(N'dbo.InboxMessage', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.InboxMessage
+    (
+        Id                   BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_InboxMessage PRIMARY KEY,
+        IdMensagemFila       NVARCHAR(100) NOT NULL,
+        DataHora             DATETIMEOFFSET NOT NULL CONSTRAINT DF_InboxMessage_DataHora DEFAULT (SYSUTCDATETIME()),
+        NomeFila             NVARCHAR(200) NOT NULL,
+        Usuario              NVARCHAR(150) NOT NULL,
+        Descricao            NVARCHAR(MAX) NOT NULL,
+        StatusEnvioEmail     NVARCHAR(50) NOT NULL
+    );
+
+    CREATE INDEX IX_InboxMessage_IdMensagemFila
+        ON dbo.InboxMessage (IdMensagemFila);
+END
+GO

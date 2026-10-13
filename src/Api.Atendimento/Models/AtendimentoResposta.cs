@@ -17,6 +17,14 @@ public sealed class AtendimentoResposta
     [JsonPropertyName("fontes")]
     public string[] Fontes { get; set; } = [];
 
+    [BsonElement("encaminharSuporteHumano")]
+    [JsonPropertyName("encaminharSuporteHumano")]
+    public bool EncaminharSuporteHumano { get; set; }
+
+    [BsonElement("resumoEncaminhamento")]
+    [JsonPropertyName("resumoEncaminhamento")]
+    public string ResumoEncaminhamento { get; set; } = string.Empty;
+
     [BsonElement("modelo")]
     [JsonPropertyName("modelo")]
     public string Modelo { get; set; } = string.Empty;

@@ -146,11 +146,43 @@ services:
       retries: 10
       start_period: 20s
 
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: fila-infis-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: infis
+      RABBITMQ_DEFAULT_PASS: infis
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - rag-infis-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: email-infis-mailhog
+    restart: unless-stopped
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+    networks:
+      - rag-infis-network
+
 volumes:
   postgres_data:
   pgadmin_data:
   mongodb_data:
   sqlserver_data:
+  rabbitmq_data:
 
 networks:
   rag-infis-network:

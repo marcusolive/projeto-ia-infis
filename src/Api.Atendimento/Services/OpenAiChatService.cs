@@ -10,21 +10,7 @@ namespace Api.Atendimento.Services;
 
 public sealed class OpenAiChatService : IOpenAiChatService
 {
-    private static readonly BinaryData Schema = BinaryData.FromBytes("""
-        {
-          "type": "object",
-          "properties": {
-            "resposta": { "type": "string" },
-            "categoria": { "type": "string" },
-            "fontes": {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-          },
-          "required": ["resposta", "categoria", "fontes"],
-          "additionalProperties": false
-        }
-        """u8.ToArray());
+    private static readonly BinaryData Schema = BinaryData.FromString(LlmRespostaSchema.Json);
 
     private readonly ChatClient _chatClient;
     private readonly OpenAIOptions _options;
@@ -40,7 +26,7 @@ public sealed class OpenAiChatService : IOpenAiChatService
         _logger = logger;
     }
 
-    public async Task<OpenAiChatResultado> GerarRespostaEstruturadaAsync(
+    public async Task<LlmChatResultado> GerarRespostaEstruturadaAsync(
         string prompt,
         CancellationToken cancellationToken)
     {
@@ -48,11 +34,7 @@ public sealed class OpenAiChatService : IOpenAiChatService
 
         var messages = new List<ChatMessage>
         {
-            new SystemChatMessage(
-                "Você é um assistente tributário e contábil. " +
-                "Responda apenas com base no contexto. " +
-                "Preencha 'fontes' com os nomes dos documentos citados no contexto. " +
-                "Use categoria 'tributaria', 'contabil', 'fora_escopo' ou 'sem_dados'."),
+            new SystemChatMessage(LlmRespostaSchema.InstrucaoSistema),
             new UserChatMessage(prompt)
         };
 
@@ -89,10 +71,11 @@ public sealed class OpenAiChatService : IOpenAiChatService
             tokensEntrada,
             tokensSaida);
 
-        return new OpenAiChatResultado(
+        return new LlmChatResultado(
             conteudo,
             _options.ChatModel,
             tokensEntrada,
-            tokensSaida);
+            tokensSaida,
+            LlmProvedor.OpenAi);
     }
 }

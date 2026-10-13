@@ -4,13 +4,14 @@ namespace Api.Atendimento.Services;
 
 public interface IOpenAiChatService
 {
-    Task<OpenAiChatResultado> GerarRespostaEstruturadaAsync(
+    Task<LlmChatResultado> GerarRespostaEstruturadaAsync(
         string prompt,
         CancellationToken cancellationToken);
 }
 
-public sealed record OpenAiChatResultado(
+public sealed record LlmChatResultado(
     LlmConteudoEstruturado Conteudo,
     string Modelo,
     int TokensEntrada,
-    int TokensSaida);
+    int TokensSaida,
+    LlmProvedor Provedor);

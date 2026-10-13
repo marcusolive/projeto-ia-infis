@@ -1,6 +1,8 @@
 using Api.Atendimento.Configuration;
+using Api.Atendimento.Plugins;
 using Api.Atendimento.Services;
 using Microsoft.OpenApi;
+using Microsoft.SemanticKernel;
 using MongoDB.Driver;
 using OpenAI;
 
@@ -20,7 +22,7 @@ public class Program
             {
                 Title = "API Atendimento",
                 Version = "v1",
-                Description = "Assistente tributário/contábil com RAG (MCP), histórico MongoDB e custos no SQL Server."
+                Description = "Assistente tributário/contábil com RAG (MCP), fallback Gemini, encaminhamento humano (outbox) e custos no SQL Server."
             });
         });
         builder.Services.AddProblemDetails();
@@ -49,6 +51,23 @@ public class Program
             .ValidateOnStart();
 
         builder.Services
+            .AddOptions<GeminiOptions>()
+            .Bind(builder.Configuration.GetSection(GeminiOptions.SectionName))
+            .PostConfigure(options =>
+            {
+                if (string.IsNullOrWhiteSpace(options.ApiKey))
+                {
+                    options.ApiKey =
+                        Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+                        ?? Environment.GetEnvironmentVariable("GOOGLE_API_KEY")
+                        ?? string.Empty;
+                }
+            })
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ChatModel),
+                "Gemini:ChatModel é obrigatório.")
+            .ValidateOnStart();
+
+        builder.Services
             .AddOptions<MongoHistoricoOptions>()
             .Bind(builder.Configuration.GetSection(MongoHistoricoOptions.SectionName))
             .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString),
@@ -72,6 +91,30 @@ public class Program
                 "CustosTokens:PrecoEntradaPorMilhao inválido.")
             .Validate(options => options.PrecoSaidaPorMilhao >= 0,
                 "CustosTokens:PrecoSaidaPorMilhao inválido.")
+            .Validate(options => options.GeminiPrecoEntradaPorMilhao >= 0,
+                "CustosTokens:GeminiPrecoEntradaPorMilhao inválido.")
+            .Validate(options => options.GeminiPrecoSaidaPorMilhao >= 0,
+                "CustosTokens:GeminiPrecoSaidaPorMilhao inválido.")
+            .ValidateOnStart();
+
+        builder.Services
+            .AddOptions<RabbitMqOptions>()
+            .Bind(builder.Configuration.GetSection(RabbitMqOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.HostName),
+                "RabbitMq:HostName é obrigatório.")
+            .Validate(options => options.Port > 0,
+                "RabbitMq:Port inválida.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.QueueName),
+                "RabbitMq:QueueName é obrigatório.")
+            .ValidateOnStart();
+
+        builder.Services
+            .AddOptions<OutboxPublisherOptions>()
+            .Bind(builder.Configuration.GetSection(OutboxPublisherOptions.SectionName))
+            .Validate(options => options.IntervaloSegundos > 0,
+                "OutboxPublisher:IntervaloSegundos deve ser maior que zero.")
+            .Validate(options => options.LoteMaximo > 0,
+                "OutboxPublisher:LoteMaximo deve ser maior que zero.")
             .ValidateOnStart();
 
         builder.Services.AddSingleton(sp =>
@@ -91,9 +134,23 @@ public class Program
         builder.Services.AddSingleton<IPromptBuilder, PromptBuilder>();
         builder.Services.AddSingleton<ICustoTokenCalculator, CustoTokenCalculator>();
         builder.Services.AddScoped<IOpenAiChatService, OpenAiChatService>();
+        builder.Services.AddSingleton<IGeminiChatService, GeminiChatService>();
         builder.Services.AddScoped<IHistoricoConversaRepository, MongoHistoricoConversaRepository>();
         builder.Services.AddScoped<IConsumoTokensRepository, SqlConsumoTokensRepository>();
+        builder.Services.AddScoped<IOutboxMessageRepository, SqlOutboxMessageRepository>();
+        builder.Services.AddScoped<EncaminharAtendimentoPlugin>();
+        builder.Services.AddScoped<IEncaminhamentoAtendimentoService, SemanticKernelEncaminhamentoService>();
         builder.Services.AddScoped<IAtendimentoOrchestrator, AtendimentoOrchestrator>();
+
+        builder.Services.AddScoped(sp =>
+        {
+            var kernelBuilder = Kernel.CreateBuilder();
+            var plugin = sp.GetRequiredService<EncaminharAtendimentoPlugin>();
+            kernelBuilder.Plugins.AddFromObject(plugin, SemanticKernelEncaminhamentoService.PluginName);
+            return kernelBuilder.Build();
+        });
+
+        builder.Services.AddHostedService<OutboxPublisherBackgroundService>();
 
         var app = builder.Build();
 
